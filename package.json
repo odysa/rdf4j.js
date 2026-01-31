@@ -1,0 +1,19 @@
+{
+	"name": "rdf4j",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.13",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}
