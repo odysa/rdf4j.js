@@ -9,7 +9,6 @@
  */
 import {
 	afterAll,
-	afterEach,
 	beforeAll,
 	beforeEach,
 	describe,
@@ -20,7 +19,8 @@ import { RDF4JClient } from "./client.ts";
 import type { RepositoryClient } from "./repository-client.ts";
 import { ContentTypes } from "./types.ts";
 
-const RDF4J_URL = process.env.RDF4J_URL ?? "http://localhost:18080/rdf4j-server";
+const RDF4J_URL =
+	process.env.RDF4J_URL ?? "http://localhost:18080/rdf4j-server";
 const TEST_REPO_PREFIX = "test-repo";
 
 let client: RDF4JClient;
@@ -324,7 +324,8 @@ describe("RepositoryClient Integration Tests", () => {
 
 	describe("Statement Operations", () => {
 		test("add adds RDF statements in Turtle format", async () => {
-			const turtle = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
+			const turtle =
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
 			await repo.add(turtle, { contentType: ContentTypes.TURTLE });
 
 			const size = await repo.size();
@@ -343,7 +344,8 @@ describe("RepositoryClient Integration Tests", () => {
 		});
 
 		test("add to specific context", async () => {
-			const turtle = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
+			const turtle =
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
 			await repo.add(turtle, {
 				contentType: ContentTypes.TURTLE,
 				context: "<http://example.org/graph1>",
@@ -355,14 +357,20 @@ describe("RepositoryClient Integration Tests", () => {
 
 		test("replace replaces all statements", async () => {
 			// Add initial data
-			await repo.add("<http://example.org/old> <http://example.org/p> <http://example.org/o> .", {
-				contentType: ContentTypes.TURTLE,
-			});
+			await repo.add(
+				"<http://example.org/old> <http://example.org/p> <http://example.org/o> .",
+				{
+					contentType: ContentTypes.TURTLE,
+				},
+			);
 
 			// Replace with new data
-			await repo.replace("<http://example.org/new> <http://example.org/p> <http://example.org/o> .", {
-				contentType: ContentTypes.TURTLE,
-			});
+			await repo.replace(
+				"<http://example.org/new> <http://example.org/p> <http://example.org/o> .",
+				{
+					contentType: ContentTypes.TURTLE,
+				},
+			);
 
 			const oldExists = await repo.ask(
 				"ASK { <http://example.org/old> ?p ?o }",
@@ -405,9 +413,7 @@ describe("RepositoryClient Integration Tests", () => {
 
 			await repo.delete({ subj: "<http://example.org/del1>" });
 
-			const exists = await repo.ask(
-				"ASK { <http://example.org/del1> ?p ?o }",
-			);
+			const exists = await repo.ask("ASK { <http://example.org/del1> ?p ?o }");
 			expect(exists).toBe(false);
 
 			const stillExists = await repo.ask(
@@ -417,9 +423,12 @@ describe("RepositoryClient Integration Tests", () => {
 		});
 
 		test("export returns all statements", async () => {
-			await repo.add("<http://example.org/export-s> <http://example.org/export-p> <http://example.org/export-o> .", {
-				contentType: ContentTypes.TURTLE,
-			});
+			await repo.add(
+				"<http://example.org/export-s> <http://example.org/export-p> <http://example.org/export-o> .",
+				{
+					contentType: ContentTypes.TURTLE,
+				},
+			);
 
 			const turtle = await repo.export({ accept: ContentTypes.TURTLE });
 			// RDF4J may use prefixes like ex:export-s or full URIs
@@ -445,14 +454,20 @@ describe("RepositoryClient Integration Tests", () => {
 		});
 
 		test("contexts returns list of named graphs", async () => {
-			await repo.add("<http://example.org/s> <http://example.org/p> <http://example.org/o> .", {
-				contentType: ContentTypes.TURTLE,
-				context: "<http://example.org/graph-a>",
-			});
-			await repo.add("<http://example.org/s> <http://example.org/p> <http://example.org/o> .", {
-				contentType: ContentTypes.TURTLE,
-				context: "<http://example.org/graph-b>",
-			});
+			await repo.add(
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+				{
+					contentType: ContentTypes.TURTLE,
+					context: "<http://example.org/graph-a>",
+				},
+			);
+			await repo.add(
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+				{
+					contentType: ContentTypes.TURTLE,
+					context: "<http://example.org/graph-b>",
+				},
+			);
 
 			const contexts = await repo.contexts();
 			expect(contexts).toContain("http://example.org/graph-a");
@@ -518,14 +533,20 @@ describe("RepositoryClient Integration Tests", () => {
 		});
 
 		test("clear with context removes only that graph", async () => {
-			await repo.add("<http://example.org/s1> <http://example.org/p> <http://example.org/o1> .", {
-				contentType: ContentTypes.TURTLE,
-				context: "<http://example.org/graph1>",
-			});
-			await repo.add("<http://example.org/s2> <http://example.org/p> <http://example.org/o2> .", {
-				contentType: ContentTypes.TURTLE,
-				context: "<http://example.org/graph2>",
-			});
+			await repo.add(
+				"<http://example.org/s1> <http://example.org/p> <http://example.org/o1> .",
+				{
+					contentType: ContentTypes.TURTLE,
+					context: "<http://example.org/graph1>",
+				},
+			);
+			await repo.add(
+				"<http://example.org/s2> <http://example.org/p> <http://example.org/o2> .",
+				{
+					contentType: ContentTypes.TURTLE,
+					context: "<http://example.org/graph2>",
+				},
+			);
 
 			await repo.clear("<http://example.org/graph1>");
 
@@ -586,9 +607,12 @@ describe("TransactionClient Integration Tests", () => {
 	test("transaction commit persists changes", async () => {
 		const txn = await txnRepo.beginTransaction();
 
-		await txn.add("<http://example.org/s> <http://example.org/p> <http://example.org/o> .", {
-			contentType: ContentTypes.TURTLE,
-		});
+		await txn.add(
+			"<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+			{
+				contentType: ContentTypes.TURTLE,
+			},
+		);
 
 		// Before commit, size should reflect the transaction state
 		const sizeInTxn = await txn.size();
@@ -604,9 +628,12 @@ describe("TransactionClient Integration Tests", () => {
 	test("transaction rollback discards changes", async () => {
 		const txn = await txnRepo.beginTransaction();
 
-		await txn.add("<http://example.org/s> <http://example.org/p> <http://example.org/o> .", {
-			contentType: ContentTypes.TURTLE,
-		});
+		await txn.add(
+			"<http://example.org/s> <http://example.org/p> <http://example.org/o> .",
+			{
+				contentType: ContentTypes.TURTLE,
+			},
+		);
 
 		const sizeInTxn = await txn.size();
 		expect(sizeInTxn).toBe(1);
@@ -774,7 +801,8 @@ describe("GraphStoreClient Integration Tests", () => {
 	describe("Default Graph Operations", () => {
 		test("putDefault replaces default graph", async () => {
 			const graphStore = gsRepo.graphStore();
-			const turtle = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
+			const turtle =
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
 
 			await graphStore.putDefault(turtle, ContentTypes.TURTLE);
 
@@ -821,7 +849,8 @@ describe("GraphStoreClient Integration Tests", () => {
 
 		test("put creates/replaces named graph", async () => {
 			const graphStore = gsRepo.graphStore();
-			const turtle = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
+			const turtle =
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
 
 			await graphStore.put(graphUri, turtle, ContentTypes.TURTLE);
 
@@ -831,7 +860,8 @@ describe("GraphStoreClient Integration Tests", () => {
 
 		test("get retrieves named graph content", async () => {
 			const graphStore = gsRepo.graphStore();
-			const turtle = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
+			const turtle =
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
 
 			await graphStore.put(graphUri, turtle, ContentTypes.TURTLE);
 
@@ -911,7 +941,8 @@ describe("GraphStoreClient Integration Tests", () => {
 
 		test("putDirect creates directly referenced graph", async () => {
 			const graphStore = gsRepo.graphStore();
-			const turtle = "<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
+			const turtle =
+				"<http://example.org/s> <http://example.org/p> <http://example.org/o> .";
 
 			await graphStore.putDirect(graphName, turtle, ContentTypes.TURTLE);
 
