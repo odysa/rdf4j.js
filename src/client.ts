@@ -78,7 +78,10 @@ export class RDF4JClient {
 	 */
 	async repositoryExists(repositoryId: string): Promise<boolean> {
 		try {
-			await this.http.head(`/repositories/${repositoryId}`);
+			// Use size endpoint as HEAD on repository endpoint is not supported
+			await this.http.get<string>(`/repositories/${repositoryId}/size`, {
+				accept: ContentTypes.TEXT,
+			});
 			return true;
 		} catch {
 			return false;
