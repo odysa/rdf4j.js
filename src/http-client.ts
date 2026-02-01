@@ -138,6 +138,80 @@ export class HttpClient {
 		}
 	}
 
+	/** Make an HTTP request and return response with headers */
+	async requestWithHeaders(
+		method: HttpMethod,
+		path: string,
+		options: RequestOptions = {},
+	): Promise<{ body: unknown; headers: Headers; status: number }> {
+		const url = this.buildUrl(path, options.params);
+		const { body, contentType } = this.prepareBody(options);
+
+		const headers: Record<string, string> = {
+			...this.defaultHeaders,
+			...options.headers,
+		};
+
+		if (contentType) {
+			headers["Content-Type"] = contentType;
+		}
+
+		if (options.accept) {
+			headers.Accept = options.accept;
+		}
+
+		const controller = new AbortController();
+		const timeoutId = setTimeout(
+			() => controller.abort(),
+			options.timeout ?? this.timeout,
+		);
+
+		try {
+			const response = await fetch(url, {
+				method,
+				headers,
+				body,
+				signal: controller.signal,
+			});
+
+			if (!response.ok) {
+				let errorResponse: unknown;
+				try {
+					const text = await response.text();
+					errorResponse = text ? JSON.parse(text) : undefined;
+				} catch {
+					// Response body is not JSON
+				}
+
+				throw new RDF4JError(
+					`HTTP ${response.status}: ${response.statusText}`,
+					response.status,
+					response.statusText,
+					errorResponse as Record<string, unknown>,
+				);
+			}
+
+			const responseContentType = response.headers.get("content-type") ?? "";
+
+			let responseBody: unknown;
+			if (response.status === 204 || !responseContentType) {
+				responseBody = undefined;
+			} else if (responseContentType.includes("application/json")) {
+				responseBody = await response.json();
+			} else {
+				responseBody = await response.text();
+			}
+
+			return {
+				body: responseBody,
+				headers: response.headers,
+				status: response.status,
+			};
+		} finally {
+			clearTimeout(timeoutId);
+		}
+	}
+
 	/** GET request */
 	get<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
 		return this.request<T>("GET", path, options);

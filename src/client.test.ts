@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, type Mock, mock, test } from "bun:test";
-import { RDF4JClient, type SparqlBindings } from "./client.ts";
+import { RDF4JClient } from "./client.ts";
+import type { SparqlBindings } from "./repository-client.ts";
 import { ContentTypes } from "./types.ts";
 
 let mockFetchFn: Mock<

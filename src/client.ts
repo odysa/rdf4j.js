@@ -1,5 +1,11 @@
 import { HttpClient } from "./http-client.ts";
-import { ContentTypes, type RDF4JConfig } from "./types.ts";
+import type { SparqlBindings } from "./repository-client.ts";
+import { RepositoryClient } from "./repository-client.ts";
+import {
+	ContentTypes,
+	type RDF4JConfig,
+	type RepositoryConfig,
+} from "./types.ts";
 
 /** RDF4J repository information */
 export interface Repository {
@@ -8,32 +14,6 @@ export interface Repository {
 	uri: string;
 	readable: boolean;
 	writable: boolean;
-}
-
-/** SPARQL query result bindings */
-export interface SparqlBindings {
-	head: {
-		vars: string[];
-	};
-	results: {
-		bindings: Array<
-			Record<
-				string,
-				{
-					type: "uri" | "literal" | "bnode";
-					value: string;
-					datatype?: string;
-					"xml:lang"?: string;
-				}
-			>
-		>;
-	};
-}
-
-/** SPARQL boolean result */
-export interface SparqlBooleanResult {
-	head: Record<string, never>;
-	boolean: boolean;
 }
 
 /** RDF4J REST API client */
@@ -71,168 +51,102 @@ export class RDF4JClient {
 		}));
 	}
 
+	/**
+	 * Create a new repository
+	 * @param config Repository configuration
+	 */
+	async createRepository(config: RepositoryConfig): Promise<void> {
+		const configTurtle =
+			config.configTurtle ?? this.generateDefaultConfig(config);
+		await this.http.put<void>(`/repositories/${config.id}`, {
+			body: configTurtle,
+			contentType: ContentTypes.TURTLE,
+		});
+	}
+
+	/**
+	 * Delete a repository
+	 * @param repositoryId Repository ID to delete
+	 */
+	async deleteRepository(repositoryId: string): Promise<void> {
+		await this.http.delete<void>(`/repositories/${repositoryId}`);
+	}
+
+	/**
+	 * Check if a repository exists
+	 * @param repositoryId Repository ID to check
+	 */
+	async repositoryExists(repositoryId: string): Promise<boolean> {
+		try {
+			await this.http.head(`/repositories/${repositoryId}`);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	/** Get repository-specific client */
 	repository(repositoryId: string): RepositoryClient {
 		return new RepositoryClient(this.http, repositoryId);
 	}
-}
 
-/** Client for repository-specific operations */
-export class RepositoryClient {
-	constructor(
-		private readonly http: HttpClient,
-		private readonly repositoryId: string,
-	) {}
+	/** Generate default repository configuration in Turtle format */
+	private generateDefaultConfig(config: RepositoryConfig): string {
+		const type = config.type ?? "memory";
+		const title = config.title ?? config.id;
 
-	private get basePath(): string {
-		return `/repositories/${this.repositoryId}`;
-	}
-
-	/** Execute a SPARQL SELECT or CONSTRUCT query */
-	async query(
-		sparql: string,
-		options?: { infer?: boolean; timeout?: number },
-	): Promise<SparqlBindings> {
-		return this.http.get<SparqlBindings>(this.basePath, {
-			params: {
-				query: sparql,
-				infer: options?.infer,
-				queryLn: "sparql",
+		// Generate repository config based on type
+		const typeMap: Record<string, { impl: string; sailType?: string }> = {
+			memory: {
+				impl: "openrdf:SailRepository",
+				sailType: "openrdf:MemoryStore",
 			},
-			accept: ContentTypes.SPARQL_RESULTS_JSON,
-			timeout: options?.timeout,
-		});
-	}
-
-	/** Execute a SPARQL ASK query */
-	async ask(
-		sparql: string,
-		options?: { infer?: boolean; timeout?: number },
-	): Promise<boolean> {
-		const result = await this.http.get<SparqlBooleanResult>(this.basePath, {
-			params: {
-				query: sparql,
-				infer: options?.infer,
-				queryLn: "sparql",
+			native: {
+				impl: "openrdf:SailRepository",
+				sailType: "openrdf:NativeStore",
 			},
-			accept: ContentTypes.SPARQL_RESULTS_JSON,
-			timeout: options?.timeout,
-		});
-		return result.boolean;
-	}
-
-	/** Execute a SPARQL UPDATE query */
-	async update(sparql: string, options?: { timeout?: number }): Promise<void> {
-		await this.http.post<void>(`${this.basePath}/statements`, {
-			body: sparql,
-			contentType: ContentTypes.SPARQL_UPDATE,
-			timeout: options?.timeout,
-		});
-	}
-
-	/** Add RDF statements */
-	async add(
-		data: string,
-		options: {
-			contentType: string;
-			context?: string;
-			baseURI?: string;
-		},
-	): Promise<void> {
-		await this.http.post<void>(`${this.basePath}/statements`, {
-			body: data,
-			contentType: options.contentType,
-			params: {
-				context: options.context,
-				baseURI: options.baseURI,
+			"memory-rdfs": {
+				impl: "openrdf:SailRepository",
+				sailType: "openrdf:ForwardChainingRDFSInferencer",
 			},
-		});
-	}
-
-	/** Delete statements matching a pattern */
-	async delete(options?: {
-		subj?: string;
-		pred?: string;
-		obj?: string;
-		context?: string;
-	}): Promise<void> {
-		await this.http.delete<void>(`${this.basePath}/statements`, {
-			params: options,
-		});
-	}
-
-	/** Export all statements */
-	async export(options?: {
-		accept?: string;
-		context?: string;
-	}): Promise<string> {
-		return this.http.get<string>(`${this.basePath}/statements`, {
-			accept: options?.accept ?? ContentTypes.TURTLE,
-			params: {
-				context: options?.context,
+			"native-rdfs": {
+				impl: "openrdf:SailRepository",
+				sailType: "openrdf:ForwardChainingRDFSInferencer",
 			},
-		});
-	}
+			sparql: { impl: "openrdf:SPARQLRepository" },
+			remote: { impl: "openrdf:HTTPRepository" },
+		};
 
-	/** Get repository size (number of statements) */
-	async size(context?: string): Promise<number> {
-		const result = await this.http.get<string>(`${this.basePath}/size`, {
-			params: { context },
-			accept: ContentTypes.TEXT,
-		});
-		return parseInt(result, 10);
-	}
+		const defaultConfig = {
+			impl: "openrdf:SailRepository",
+			sailType: "openrdf:MemoryStore",
+		};
+		const typeConfig = typeMap[type] ?? defaultConfig;
 
-	/** Get available contexts (named graphs) */
-	async contexts(): Promise<string[]> {
-		const result = await this.http.get<SparqlBindings>(
-			`${this.basePath}/contexts`,
-			{
-				accept: ContentTypes.SPARQL_RESULTS_JSON,
-			},
-		);
-		return result.results.bindings.map(
-			(binding) => binding.contextID?.value ?? "",
-		);
-	}
+		let turtle = `
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rep: <http://www.openrdf.org/config/repository#>.
+@prefix sr: <http://www.openrdf.org/config/repository/sail#>.
+@prefix sail: <http://www.openrdf.org/config/sail#>.
+@prefix ms: <http://www.openrdf.org/config/sail/memory#>.
+@prefix ns: <http://www.openrdf.org/config/sail/native#>.
 
-	/** Get namespaces */
-	async namespaces(): Promise<Record<string, string>> {
-		const result = await this.http.get<SparqlBindings>(
-			`${this.basePath}/namespaces`,
-			{
-				accept: ContentTypes.SPARQL_RESULTS_JSON,
-			},
-		);
+[] a rep:Repository ;
+   rep:repositoryID "${config.id}" ;
+   rdfs:label "${title}" ;
+   rep:repositoryImpl [
+      rep:repositoryType "${typeConfig.impl}"`;
 
-		const namespaces: Record<string, string> = {};
-		for (const binding of result.results.bindings) {
-			const prefix = binding.prefix?.value;
-			const namespace = binding.namespace?.value;
-			if (prefix && namespace) {
-				namespaces[prefix] = namespace;
-			}
+		if (typeConfig.sailType) {
+			turtle += ` ;
+      sr:sailImpl [
+         sail:sailType "${typeConfig.sailType}"
+      ]`;
 		}
-		return namespaces;
-	}
 
-	/** Set a namespace prefix */
-	async setNamespace(prefix: string, namespace: string): Promise<void> {
-		await this.http.put<void>(`${this.basePath}/namespaces/${prefix}`, {
-			body: namespace,
-			contentType: ContentTypes.TEXT,
-		});
-	}
-
-	/** Delete a namespace prefix */
-	async deleteNamespace(prefix: string): Promise<void> {
-		await this.http.delete<void>(`${this.basePath}/namespaces/${prefix}`);
-	}
-
-	/** Clear all statements (optionally in a specific context) */
-	async clear(context?: string): Promise<void> {
-		await this.http.delete<void>(`${this.basePath}/statements`, {
-			params: { context },
-		});
+		turtle += `
+   ] .
+`;
+		return turtle;
 	}
 }

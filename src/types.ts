@@ -61,12 +61,20 @@ export const ContentTypes = {
 	RDFXML: "application/rdf+xml",
 	JSONLD: "application/ld+json",
 	TRIG: "application/trig",
+	TRIX: "application/trix",
+	BINARY_RDF: "application/x-binary-rdf",
+	RDF_JSON: "application/rdf+json",
+	N3: "text/rdf+n3",
 
 	// SPARQL formats
 	SPARQL_QUERY: "application/sparql-query",
 	SPARQL_UPDATE: "application/sparql-update",
 	SPARQL_RESULTS_JSON: "application/sparql-results+json",
 	SPARQL_RESULTS_XML: "application/sparql-results+xml",
+	BINARY_RDF_RESULTS: "application/x-binary-rdf-results-table",
+
+	// Transaction format
+	RDF_TRANSACTION: "application/x-rdftransaction",
 
 	// Generic
 	JSON: "application/json",
@@ -75,3 +83,52 @@ export const ContentTypes = {
 } as const;
 
 export type ContentType = (typeof ContentTypes)[keyof typeof ContentTypes];
+
+/** Transaction isolation levels */
+export type IsolationLevel =
+	| "NONE"
+	| "READ_UNCOMMITTED"
+	| "READ_COMMITTED"
+	| "SNAPSHOT_READ"
+	| "SNAPSHOT"
+	| "SERIALIZABLE";
+
+/** Repository configuration template types */
+export type RepositoryType =
+	| "memory"
+	| "native"
+	| "memory-rdfs"
+	| "memory-rdfs-dt"
+	| "native-rdfs"
+	| "native-rdfs-dt"
+	| "memory-shacl"
+	| "native-shacl"
+	| "memory-spin"
+	| "native-spin"
+	| "memory-lucene"
+	| "native-lucene"
+	| "memory-customrule"
+	| "native-customrule"
+	| "remote"
+	| "sparql"
+	| "federation";
+
+/** Repository configuration */
+export interface RepositoryConfig {
+	id: string;
+	title?: string;
+	type?: RepositoryType | string;
+	/** Additional configuration as RDF in Turtle format */
+	configTurtle?: string;
+}
+
+/** Transaction action types for RDF transaction documents */
+export type TransactionAction =
+	| "ADD"
+	| "DELETE"
+	| "GET"
+	| "QUERY"
+	| "UPDATE"
+	| "SIZE"
+	| "COMMIT"
+	| "ROLLBACK";
