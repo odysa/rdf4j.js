@@ -22,10 +22,36 @@ jobs:
       - run: bun install
       - run: bun run typecheck
 
-  test:
+  test-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
-      - run: bun test
+      - run: bun run test:unit
+
+  test-integration:
+    runs-on: ubuntu-latest
+    services:
+      rdf4j:
+        image: eclipse/rdf4j-workbench:5.0.0
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/rdf4j-server/protocol || exit 1"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 10
+          --health-start-period 30s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Wait for RDF4J to be ready
+        run: |
+          for i in {1..30}; do
+            curl -s http://localhost:8080/rdf4j-server/protocol && break || sleep 2
+          done
+      - run: bun run test:integration
+        env:
+          RDF4J_URL: http://localhost:8080/rdf4j-server
