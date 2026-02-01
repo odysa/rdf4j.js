@@ -12,12 +12,16 @@ export class GraphStoreClient {
 		return `/repositories/${this.repositoryId}/rdf-graphs`;
 	}
 
+	/** Service URL for default graph (uses ?default without value per SPARQL GSP spec) */
+	private get defaultGraphUrl(): string {
+		return `${this.basePath}/service?default`;
+	}
+
 	/**
 	 * Get the default graph
 	 */
 	async getDefault(accept?: string): Promise<string> {
-		return this.http.get<string>(`${this.basePath}/service`, {
-			params: { default: "true" },
+		return this.http.get<string>(this.defaultGraphUrl, {
 			accept: accept ?? ContentTypes.TURTLE,
 		});
 	}
@@ -26,10 +30,9 @@ export class GraphStoreClient {
 	 * Replace the default graph
 	 */
 	async putDefault(data: string, contentType: string): Promise<void> {
-		await this.http.put<void>(`${this.basePath}/service`, {
+		await this.http.put<void>(this.defaultGraphUrl, {
 			body: data,
 			contentType,
-			params: { default: "true" },
 		});
 	}
 
@@ -37,10 +40,9 @@ export class GraphStoreClient {
 	 * Add to the default graph
 	 */
 	async postDefault(data: string, contentType: string): Promise<void> {
-		await this.http.post<void>(`${this.basePath}/service`, {
+		await this.http.post<void>(this.defaultGraphUrl, {
 			body: data,
 			contentType,
-			params: { default: "true" },
 		});
 	}
 
@@ -48,9 +50,7 @@ export class GraphStoreClient {
 	 * Delete the default graph
 	 */
 	async deleteDefault(): Promise<void> {
-		await this.http.delete<void>(`${this.basePath}/service`, {
-			params: { default: "true" },
-		});
+		await this.http.delete<void>(this.defaultGraphUrl);
 	}
 
 	/**

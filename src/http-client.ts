@@ -128,7 +128,10 @@ export class HttpClient {
 				return undefined as T;
 			}
 
-			if (responseContentType.includes("application/json")) {
+			if (
+				responseContentType.includes("application/json") ||
+				responseContentType.includes("+json")
+			) {
 				return (await response.json()) as T;
 			}
 
@@ -196,7 +199,10 @@ export class HttpClient {
 			let responseBody: unknown;
 			if (response.status === 204 || !responseContentType) {
 				responseBody = undefined;
-			} else if (responseContentType.includes("application/json")) {
+			} else if (
+				responseContentType.includes("application/json") ||
+				responseContentType.includes("+json")
+			) {
 				responseBody = await response.json();
 			} else {
 				responseBody = await response.text();
